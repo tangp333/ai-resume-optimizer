@@ -26,13 +26,38 @@
             --orange: #f59e0b;
             --r: 20px;
         }
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-2: #94a3b8;
+            --text-3: #64748b;
+            --border: #334155;
+        }
 
         body {
             font-family: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
             background: var(--bg);
             color: var(--text);
             -webkit-font-smoothing: antialiased;
+            transition: background 0.3s, color 0.3s;
         }
+        [data-theme="dark"] .nav { background: rgba(15,23,42,0.85); border-bottom-color: #1e293b; }
+        [data-theme="dark"] .panel { background: #1e293b; border-color: #334155; }
+        [data-theme="dark"] textarea { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+        [data-theme="dark"] textarea:focus { background: #1e293b; }
+        [data-theme="dark"] .dropzone { background: #1e293b; border-color: #334155; }
+        [data-theme="dark"] .dim { background: #0f172a; }
+        [data-theme="dark"] .dim-track { background: #334155; }
+        [data-theme="dark"] .tab-bar { background: #1e293b; }
+        [data-theme="dark"] .tab-btn.on { background: #334155; }
+        [data-theme="dark"] .score-desc { background: #1e293b; }
+        [data-theme="dark"] .kw-tip { background: #1e293b; border-color: #334155; color: #fbbf24; }
+        [data-theme="dark"] .btn-sm { background: #1e293b; border-color: #334155; color: #94a3b8; }
+        [data-theme="dark"] .btn-sm:hover { border-color: var(--primary); color: var(--primary); background: #1e293b; }
+        [data-theme="dark"] .file-tag { background: #1e293b; }
+        [data-theme="dark"] .md-body code { background: #1e293b; }
+        [data-theme="dark"] .hero::before { background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%); }
 
         /* ========== NAV ========== */
         .nav {
@@ -333,6 +358,9 @@
         AI Resume Optimizer
     </div>
     <div class="nav-links">
+        <a href="javascript:void(0)" onclick="toggleTheme()" id="themeBtn" title="切换深色模式">
+            <i class="ri-moon-fill"></i>
+        </a>
         <a href="https://github.com/tangp333/ai-resume-optimizer" target="_blank">
             <i class="ri-github-fill"></i> Star on GitHub
         </a>
@@ -601,6 +629,24 @@ async function doExport() {
     a.download = '简历优化报告.pdf';
     a.click();
 }
+
+// ========== 深色模式 ==========
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    const icon = document.querySelector('#themeBtn i');
+    icon.className = isDark ? 'ri-moon-fill' : 'ri-sun-fill';
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+// 初始化
+(function() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.querySelector('#themeBtn i').className = 'ri-sun-fill';
+    }
+})();
 </script>
 </body>
 </html>
