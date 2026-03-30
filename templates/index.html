@@ -428,6 +428,7 @@
             <button class="tab-btn" data-tab="kw"><i class="ri-key-2-fill"></i> 关键词</button>
             <button class="tab-btn" data-tab="analysis"><i class="ri-lightbulb-fill"></i> 优化建议</button>
             <button class="tab-btn" data-tab="compare"><i class="ri-scales-3-fill"></i> 多岗对比</button>
+            <button class="tab-btn" data-tab="history"><i class="ri-history-fill"></i> 历史记录</button>
         </div>
 
         <!-- Score -->
@@ -479,6 +480,19 @@
             <div class="panel">
                 <div class="md-body" id="compareBody">
                     <p style="color:var(--text-3)">输入多个岗位 JD 后点击分析，自动进行多岗位对比。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="tab-pane" id="pane-history">
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-icon purple"><i class="ri-history-fill"></i></span>
+                    分析历史记录
+                </div>
+                <div id="historyList">
+                    <p style="color:var(--text-3);text-align:center;padding:40px 0">暂无记录，完成一次分析后自动保存</p>
                 </div>
             </div>
         </div>
@@ -647,6 +661,68 @@ function toggleTheme() {
         document.querySelector('#themeBtn i').className = 'ri-sun-fill';
     }
 })();
+
+// ========== 历史记录 ==========
+async function loadHistory() {
+    try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+        const el = document.getElementById('historyList');
+        if (!data.length) {
+            el.innerHTML = '<p style="color:var(--text-3);text-align:center;padding:40px 0">暂无记录</p>';
+            return;
+        }
+        el.innerHTML = data.map(item => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer" 
+                 onclick="viewHistory(${item.id})">
+                <div>
+                    <div style="font-weight:600;font-size:0.9em">
+                        ${item.score ? '📊 ' + item.score + '分' : ''} 
+                        ${item.jd_text ? item.jd_text.substring(0, 30) + '...' : '未知岗位'}
+                    </div>
+                    <div style="font-size:0.8em;color:var(--text-3);margin-top:4px">${item.created_at}</div>
+                </div>
+                <button class="btn-sm" onclick="event.stopPropagation();deleteHistory(${item.id})" style="padding:6px 12px;font-size:0.8em">
+                    <i class="ri-delete-bin-line"></i>
+                </button>
+            </div>
+        `).join('');
+    } catch(e) {}
+}
+
+async function viewHistory(id) {
+    const res = await fetch('/api/history/' + id);
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+
+    // 显示在评分tab
+    try {
+        const score = JSON.parse(data.score_detail || '{}');
+        renderScore(score);
+    } catch(e) {}
+    try {
+        const kw = JSON.parse(data.keywords || '{}');
+        renderKW(kw);
+    } catch(e) {}
+    rawAnalysis = data.analysis || '';
+    document.getElementById('analysisBody').innerHTML = marked.parse(rawAnalysis);
+
+    // 切到评分tab
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('on'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('on'));
+    document.querySelector('[data-tab="score"]').classList.add('on');
+    document.getElementById('pane-score').classList.add('on');
+    document.getElementById('results').classList.add('on');
+}
+
+async function deleteHistory(id) {
+    if (!confirm('确定删除这条记录？')) return;
+    await fetch('/api/history/' + id, { method: 'DELETE' });
+    loadHistory();
+}
+
+// 点击历史tab时加载
+document.querySelector('[data-tab="history"]').addEventListener('click', loadHistory);
 </script>
 </body>
 </html>

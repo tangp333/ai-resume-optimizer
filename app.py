@@ -1,7 +1,9 @@
 import os
 import re
 import json
+import sqlite3
 import tempfile
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_file
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -14,6 +16,26 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+
+# ========== 数据库 ==========
+DB_PATH = os.path.join(os.path.dirname(__file__), 'history.db')
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('''CREATE TABLE IF NOT EXISTS history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT NOT NULL,
+        resume_text TEXT,
+        jd_text TEXT,
+        score INTEGER,
+        score_detail TEXT,
+        keywords TEXT,
+        analysis TEXT
+    )''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
@@ -89,6 +111,24 @@ def analyze():
     keywords = get_keywords(resume_text, jd)
     # 3. 详细分析
     analysis = get_analysis(resume_text, jd)
+
+    # 保存到历史记录
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('''INSERT INTO history (created_at, resume_text, jd_text, score, score_detail, keywords, analysis)
+            VALUES (?, ?, ?, ?, ?, ?, ?)''', (
+            datetime.now().strftime('%Y-%m-%d %H:%M'),
+            resume_text[:2000],
+            jd[:2000],
+            score.get('total_score', 0),
+            json.dumps(score, ensure_ascii=False),
+            json.dumps(keywords, ensure_ascii=False),
+            analysis[:5000]
+        ))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
     return jsonify({
         "score": score,
@@ -198,6 +238,36 @@ JD：{jd}
 def get_analysis(resume, jd):
     prompt = f"""资深HR分析简历。JD：{jd}\n简历：{resume}\n\n输出：\n## 📊 优缺点分析\n## ✏️ 修改建议\n## 📄 优化后简历\n## 🎤 面试准备\n\n中文Markdown。"""
     return call_ai("简历优化顾问，专业具体。", prompt)
+
+
+# ========== 历史记录 API ==========
+@app.route("/api/history", methods=["GET"])
+def list_history():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute('SELECT id, created_at, score, jd_text FROM history ORDER BY id DESC LIMIT 50').fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/history/<int:hid>", methods=["GET"])
+def get_history(hid):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    row = conn.execute('SELECT * FROM history WHERE id = ?', (hid,)).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"error": "记录不存在"}), 404
+    return jsonify(dict(row))
+
+
+@app.route("/api/history/<int:hid>", methods=["DELETE"])
+def delete_history(hid):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('DELETE FROM history WHERE id = ?', (hid,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
