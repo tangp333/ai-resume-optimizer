@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 简历优化器</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius: 16px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ===== 顶部导航 ===== */
+        .navbar {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.9);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .logo i { font-size: 1.4em; }
+        .nav-links { display: flex; gap: 8px; }
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover { background: var(--bg); color: var(--primary); }
+
+        /* ===== 主体布局 ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        /* ===== Hero ===== */
+        .hero {
+            text-align: center;
+            padding: 48px 0 32px;
+        }
+        .hero h1 {
+            font-size: 2.5em;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+        .hero p {
+            color: var(--text-light);
+            font-size: 1.15em;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .badge.score { background: #ede9fe; color: #7c3aed; }
+        .badge.ats { background: #dcfce7; color: #16a34a; }
+        .badge.multi { background: #fef3c7; color: #d97706; }
+        .badge.pdf { background: #fee2e2; color: #dc2626; }
+
+        /* ===== 卡片 ===== */
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 28px;
+            margin-bottom: 24px;
+        }
+        .card-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ===== 输入区 ===== */
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 768px) {
+            .input-grid { grid-template-columns: 1fr; }
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--bg);
+        }
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: #f0f0ff;
+        }
+        .upload-zone i { font-size: 2em; color: var(--primary); margin-bottom: 8px; display: block; }
+        .upload-zone p { color: var(--text-light); font-size: 0.9em; }
+        .upload-zone input { display: none; }
+        .file-name {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #ede9fe;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: var(--primary);
+            display: none;
+        }
+
+        textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 0.95em;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 200px;
+            transition: border-color 0.2s;
+            line-height: 1.6;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+
+        /* ===== 按钮 ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #7c3aed);
+            color: white;
+            width: 100%;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(99,102,241,0.3);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-sm {
+            padding: 10px 20px;
+            font-size: 0.9em;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-sm:hover { background: #e2e8f0; }
+
+        /* ===== Tab 导航 ===== */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: var(--text-light);
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+        .tab:hover:not(.active) { color: var(--text); }
+
+        /* ===== 结果区 ===== */
+        .results { display: none; }
+        .results.show { display: block; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* 评分卡片 */
+        .score-circle {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            padding: 4px;
+            background: conic-gradient(var(--primary) var(--pct, 0%), #e2e8f0 0%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+        .score-num { font-size: 2.8em; font-weight: 800; color: var(--primary); }
+        .score-label { font-size: 0.85em; color: var(--text-light); }
+
+        .dim-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .dim-item {
+            background: var(--bg);
+            padding: 14px;
+            border-radius: 10px;
+        }
+        .dim-name { font-size: 0.85em; color: var(--text-light); margin-bottom: 6px; }
+        .dim-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        .dim-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            transition: width 0.8s ease;
+        }
+        .dim-score { font-size: 0.85em; font-weight: 600; color: var(--primary); }
+
+        /* 关键词 */
+        .kw-section { margin-bottom: 16px; }
+        .kw-label { font-weight: 600; margin-bottom: 8px; font-size: 0.9em; }
+        .kw-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+        .kw-tag {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .kw-tag.matched { background: #dcfce7; color: #16a34a; }
+        .kw-tag.missing { background: #fee2e2; color: #dc2626; }
+
+        /* 分析 Markdown */
+        .analysis-content {
+            line-height: 1.8;
+            font-size: 0.95em;
+        }
+        .analysis-content h2 {
+            font-size: 1.2em;
+            margin: 24px 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+        .analysis-content h3 { font-size: 1.05em; margin: 16px 0 8px; }
+        .analysis-content ul, .analysis-content ol { padding-left: 20px; }
+        .analysis-content li { margin-bottom: 6px; }
+        .analysis-content strong { color: var(--primary); }
+
+        /* 导出 */
+        .export-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px 0;
+        }
+        .loading.show { display: block; }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading p { color: var(--text-light); }
+
+        /* 底部 */
+        footer {
+            text-align: center;
+            padding: 32px;
+            color: var(--text-light);
+            font-size: 0.85em;
+        }
+        footer a { color: var(--primary); text-decoration: none; }
+
+        /* 多岗位输入 */
+        .extra-jds { display: none; }
+        .extra-jds.show { display: block; }
+        .toggle-jds {
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar">
+    <div class="logo">
+        <i class="ri-file-user-fill"></i>
+        <span>AI Resume Optimizer</span>
+    </div>
+    <div class="nav-links">
+        <a href="https://github.com/tangp333/ai-resume-optimizer" target="_blank">
+            <i class="ri-github-fill"></i> GitHub
+        </a>
+    </div>
+</nav>
+
+<!-- 主体 -->
+<div class="container">
+
+    <!-- Hero -->
+    <div class="hero">
+        <h1>📄 AI 简历优化器</h1>
+        <p>上传简历 + 岗位 JD，AI 帮你全方位分析并生成优化方案</p>
+        <div class="badges">
+            <span class="badge score"><i class="ri-bar-chart-fill"></i> 智能评分</span>
+            <span class="badge ats"><i class="ri-key-2-fill"></i> ATS 关键词</span>
+            <span class="badge multi"><i class="ri-scales-3-fill"></i> 多岗对比</span>
+            <span class="badge pdf"><i class="ri-file-pdf-2-fill"></i> PDF 导出</span>
+        </div>
+    </div>
+
+    <!-- 输入区 -->
+    <div class="input-grid">
+        <div class="card">
+            <div class="card-title"><i class="ri-file-text-fill" style="color:var(--primary)"></i> 你的简历</div>
+
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                <i class="ri-upload-cloud-2-line"></i>
+                <p>点击上传简历文件（.txt / .docx / .pdf）</p>
+                <p style="font-size:0.8em;margin-top:4px">或直接在下方输入</p>
+                <input type="file" id="fileInput" accept=".txt,.docx,.pdf">
+            </div>
+            <div class="file-name" id="fileName"></div>
+
+            <textarea id="resumeText" placeholder="或在这里粘贴简历内容...&#10;&#10;包含教育背景、技能、项目经历、自我评价等" style="margin-top:12px"></textarea>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="ri-briefcase-fill" style="color:#a855f7"></i> 目标岗位 JD</div>
+            <textarea id="jd1" placeholder="粘贴目标岗位的职位描述...&#10;&#10;包含岗位要求、技能需求、工作内容等" style="min-height:280px"></textarea>
+
+            <div class="toggle-jds" onclick="toggleExtraJds()">
+                <i class="ri-add-circle-line"></i> 添加更多岗位进行对比
+            </div>
+            <div class="extra-jds" id="extraJds">
+                <textarea id="jd2" placeholder="岗位 2 的 JD..." style="min-height:120px;margin-top:12px"></textarea>
+                <textarea id="jd3" placeholder="岗位 3 的 JD..." style="min-height:120px;margin-top:12px"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分析按钮 -->
+    <div style="margin:8px 0 24px">
+        <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalyze()">
+            <i class="ri-sparkling-2-fill"></i> 开始智能分析
+        </button>
+    </div>
+
+    <!-- 加载 -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p id="loadingText">正在分析中...</p>
+    </div>
+
+    <!-- 结果区 -->
+    <div class="results" id="results">
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('score')"><i class="ri-bar-chart-fill"></i> 评分</div>
+            <div class="tab" onclick="switchTab('keywords')"><i class="ri-key-2-fill"></i> 关键词</div>
+            <div class="tab" onclick="switchTab('analysis')"><i class="ri-lightbulb-fill"></i> 优化建议</div>
+            <div class="tab" onclick="switchTab('compare')"><i class="ri-scales-3-fill"></i> 多岗对比</div>
+        </div>
+
+        <!-- 评分 -->
+        <div class="tab-content active" id="tab-score">
+            <div class="card">
+                <div class="score-circle" id="scoreCircle">
+                    <span class="score-num" id="scoreNum">--</span>
+                    <span class="score-label">综合评分</span>
+                </div>
+                <p style="text-align:center;color:var(--text-light);margin-bottom:20px" id="scoreSummary"></p>
+                <div class="dim-grid" id="dimGrid"></div>
+            </div>
+        </div>
+
+        <!-- 关键词 -->
+        <div class="tab-content" id="tab-keywords">
+            <div class="card">
+                <div style="text-align:center;margin-bottom:20px">
+                    <span style="font-size:2em;font-weight:800;color:var(--primary)" id="kwRate">--%</span>
+                    <p style="color:var(--text-light);margin-top:4px">关键词覆盖率</p>
+                </div>
+                <div class="kw-section">
+                    <div class="kw-label">✅ 已匹配关键词</div>
+                    <div class="kw-tags" id="kwMatched"></div>
+                </div>
+                <div class="kw-section">
+                    <div class="kw-label">❌ 缺失关键词</div>
+                    <div class="kw-tags" id="kwMissing"></div>
+                </div>
+                <div id="kwSuggestions" style="margin-top:16px;padding:16px;background:var(--bg);border-radius:10px;font-size:0.9em"></div>
+            </div>
+        </div>
+
+        <!-- 优化建议 -->
+        <div class="tab-content" id="tab-analysis">
+            <div class="card">
+                <div class="analysis-content" id="analysisContent"></div>
+                <div class="export-row">
+                    <button class="btn btn-sm" onclick="exportPDF()"><i class="ri-file-pdf-2-fill"></i> 导出 PDF 报告</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 多岗对比 -->
+        <div class="tab-content" id="tab-compare">
+            <div class="card">
+                <div class="analysis-content" id="compareContent">
+                    <p style="color:var(--text-light)">输入多个岗位JD后，点击分析即可进行对比。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    ⭐ 觉得好用？欢迎到 <a href="https://github.com/tangp333/ai-resume-optimizer" target="_blank">GitHub</a> 点个 Star
+    &nbsp;|&nbsp; Powered by AI
+</footer>
+
+<script>
+let analysisData = {};
+
+// 文件上传
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        document.getElementById('fileName').textContent = '📎 ' + file.name;
+        document.getElementById('fileName').style.display = 'block';
+    }
+});
+
+// 展开/收起额外岗位
+function toggleExtraJds() {
+    const el = document.getElementById('extraJds');
+    el.classList.toggle('show');
+}
+
+// Tab切换
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    event.target.closest('.tab').classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+}
+
+// 开始分析
+async function startAnalyze() {
+    const resumeText = document.getElementById('resumeText').value.trim();
+    const jd = document.getElementById('jd1').value.trim();
+    const fileInput = document.getElementById('fileInput');
+
+    if (!resumeText && !fileInput.files[0]) {
+        alert('请输入或上传简历');
+        return;
+    }
+    if (!jd) {
+        alert('请输入目标岗位 JD');
+        return;
+    }
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line" style="animation:spin 1s linear infinite"></i> 分析中...';
+
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('results').classList.remove('show');
+
+    try {
+        const formData = new FormData();
+        formData.append('resume', resumeText);
+        formData.append('jd', jd);
+        if (fileInput.files[0]) {
+            formData.append('file', fileInput.files[0]);
+        }
+
+        document.getElementById('loadingText').textContent = '正在评分...';
+        const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        analysisData = data;
+        renderScore(data.score);
+        renderKeywords(data.keywords);
+        renderAnalysis(data.analysis);
+
+        // 多岗对比
+        const jd2 = document.getElementById('jd2').value.trim();
+        const jd3 = document.getElementById('jd3').value.trim();
+        const extraJds = [jd, jd2, jd3].filter(j => j);
+        if (extraJds.length >= 2) {
+            document.getElementById('loadingText').textContent = '正在对比岗位...';
+            const compRes = await fetch('/api/compare', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ resume: resumeText, jds: extraJds })
+            });
+            const compData = await compRes.json();
+            document.getElementById('compareContent').innerHTML = marked.parse(compData.result || '对比失败');
+        }
+
+        document.getElementById('results').classList.add('show');
+    } catch (e) {
+        alert('分析失败：' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ri-sparkling-2-fill"></i> 开始智能分析';
+        document.getElementById('loading').classList.remove('show');
+    }
+}
+
+function renderScore(data) {
+    const score = data.total_score || 0;
+    document.getElementById('scoreNum').textContent = score;
+    document.getElementById('scoreCircle').style.setProperty('--pct', score + '%');
+    document.getElementById('scoreSummary').textContent = data.summary || '';
+
+    const grid = document.getElementById('dimGrid');
+    grid.innerHTML = '';
+    const dims = data.dimensions || {};
+    for (const [name, val] of Object.entries(dims)) {
+        grid.innerHTML += `
+            <div class="dim-item">
+                <div class="dim-name">${name}</div>
+                <div class="dim-bar"><div class="dim-bar-fill" style="width:${val}%"></div></div>
+                <div class="dim-score">${val}/100</div>
+            </div>`;
+    }
+}
+
+function renderKeywords(data) {
+    document.getElementById('kwRate').textContent = (data.coverage_rate || 0) + '%';
+
+    const matched = document.getElementById('kwMatched');
+    matched.innerHTML = (data.matched || []).map(k => `<span class="kw-tag matched">${k}</span>`).join('');
+    if (!data.matched?.length) matched.innerHTML = '<span style="color:var(--text-light);font-size:0.9em">无匹配关键词</span>';
+
+    const missing = document.getElementById('kwMissing');
+    missing.innerHTML = (data.missing || []).map(k => `<span class="kw-tag missing">${k}</span>`).join('');
+    if (!data.missing?.length) missing.innerHTML = '<span style="color:var(--text-light);font-size:0.9em">无缺失关键词</span>';
+
+    document.getElementById('kwSuggestions').innerHTML = data.suggestions || '';
+}
+
+function renderAnalysis(text) {
+    document.getElementById('analysisContent').innerHTML = marked.parse(text || '');
+}
+
+async function exportPDF() {
+    const content = document.getElementById('analysisContent').innerText;
+    if (!content) { alert('请先进行分析'); return; }
+
+    try {
+        const res = await fetch('/api/export-pdf', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ content })
+        });
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '简历优化报告.pdf';
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        alert('导出失败：' + e.message);
+    }
+}
+</script>
+</body>
+</html>
